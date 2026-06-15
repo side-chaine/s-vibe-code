@@ -6,97 +6,68 @@
 
 ## 1. РОЛИ
 
-| Роль | Кодовое имя | Инстанс | Модель | Что делает |
-|------|-------------|---------|--------|-----------|
+| Роль | Кодовое имя | Инстанс | Рекомендуемая модель | Что делает |
+|------|-------------|---------|---------------------|-----------|
 | **Ты** | Product Manager | — | Человек | Ставишь задачи. WHAT & WHEN |
-| **Architect** | **001** | Сессия (manual) | Тяжёлая | Архитектурные решения, TC, frozen override. Вызывается on-demand |
-| **Scout** | **007** | 1-й | Лёгкая | Разведка, упаковка MACRO/MICRO, DOC-CHECK first pass, registry |
-| **Operator** | — | 2-й, изолированный | Лёгкая | Слепое исполнение TC. Не видит контекста, только инструкцию |
-| **Verifier** | **009** | 3-й | Лёгкая | Независимая верификация, DOC-CHECK second pass, registry validation |
+| **Architect** | **001** | Сессия (manual) | `opencode-go/kimi-k2.6` | Архитектурные решения, frozen override |
+| **Scout** | **007** | 1-й | `opencode-go/deepseek-v4-flash` | Разведка, MACRO/MICRO, DOC-CHECK |
+| **Operator** | — | 2-й, изолированный | `opencode-go/deepseek-v4-flash` | Слепое исполнение TC |
+| **Verifier** | **009** | 3-й | `opencode-go/kimi-k2.6` | Независимая верификация, registry |
 
-### Ты
-
-Ты — Product Manager. Ты решаешь **ЧТО** и **КОГДА** делать. Остальное делают агенты.
-
-### Architect (001)
-
-Архитектор. Включается когда:
-- Нужно архитектурное решение
-- Нарушение frozen zones
-- Конфликт между Scout и Verifier
-- Governance freeze / консолидация
-
-**Не пишет код, не создаёт TC в рутине.**
-
-### Scout (007)
-
-Разведчик. Это главный рабочий агент:
-- Получает задачу от тебя
-- Собирает контекст (MACRO-PACK)
-- Упаковывает инструкцию для Operator (MICRO-PACK)
-- Проверяет результат после Operator
-- Делает DOC-CHECK first pass
-- Обновляет registry
-
-**Не пишет код, не принимает архитектурных решений.**
-
-### Operator
-
-Слепой исполнитель. Запускается в изолированном контексте:
-- Получает только MICRO-PACK (не видит MACRO-PACK)
-- Холодная верификация перед apply
-- Применяет TC строго по инструкции
-- Запускает tsc + тесты
-- Error = Stop (не чинит, докладывает)
-
-**Максимум 2 файла за задачу. Не рефакторит. Не импровизирует.**
-
-### Verifier (009)
-
-Независимый верификатор. Запускается после Scout:
-- Runtime audit — проверка что изменения работают
-- DOC-CHECK second pass — перепроверяет документацию (независимо от Scout)
-- Registry validation — проверка статусов
-- FULL-BASE drift — проверка архитектурных изменений
-- Random audit — каждые 10 TC полный аудит без чтения отчёта Scout
-
-**Имеет право заблокировать COMPLETE. Не пишет код, не предлагает фиксы.**
+**Принцип:** Roles are mandatory. Models are replaceable.
+У тебя может быть другой стек моделей — просто замени ID в `.opencode/agent/*.md`.
 
 ---
 
-## 1.1 🔄 Model Routing — как OpenCode переключает модели
+## 1.1 🔄 Model Routing — как OpenCode назначает модели
 
-S-VC использует встроенный механизм OpenCode: каждая роль описана в `.opencode/agent/X.md`.
+S-VC хранит конфигурацию моделей в `.opencode/agent/X.md`. Каждый файл может содержать `model:` — ID модели из `opencode models`.
 
-```
-opencode.json
-  └── default_agent: "007"     ← 007 запускается первым (лёгкая модель)
-  
-.opencode/agent/
-  ├── 001.md → model: sonnet    ← Когда 007 вызывает Architect — OpenCode спавнит Sonnet
-  ├── 007.md → без model         ← Использует default (лёгкая)
-  ├── 009.md → без model         ← Использует default (лёгкая)
-  └── operator.md → без model    ← Использует default (лёгкая)
-```
+### Пример рабочей конфигурации
 
-**Как это работает в цикле:**
+```yaml
+# .opencode/agent/001.md
+model: opencode-go/kimi-k2.6
 
-```
-Задача → 007 (light, $) 
-              ↓ task(subagent_type="001")
-         001 (SONNET, $$$) — решил архитектуру
-              ↓ возвращает TC
-         007 (light, $) — упаковал MICRO-PACK
-              ↓ task(subagent_type="operator")
-         Operator (light, $) — применил код
-              ↓ 
-         007 (light, $) — проверил, запустил DOC-CHECK
-              ↓ task(subagent_type="009")
-         009 (light, $) — VERDICT ✅
+# .opencode/agent/007.md
+model: opencode-go/deepseek-v4-flash
+
+# .opencode/agent/009.md
+model: opencode-go/kimi-k2.6
+
+# .opencode/agent/operator.md
+model: opencode-go/deepseek-v4-flash
 ```
 
-Тяжёлая модель (001) вызывается **только когда нужно архитектурное решение**.
-Всю рутину делают лёгкие агенты — это экономит и токены, и деньги.
+### Как это работает
+
+Модель по умолчанию — та, что выбрана в OpenCode.  
+Если в agent-файле указан `model:` — OpenCode пытается использовать её.
+
+```
+OpenCode default → [модель]
+     ↓
+.opencode/agent/001.md → model: opencode-go/kimi-k2.6    ← попытка переключить
+.opencode/agent/007.md → model: opencode-go/deepseek-v4-flash
+```
+
+### Известное ограничение
+
+При вызове `task(subagent_type="009")` OpenCode **может не переключить** модель на указанную в 009.md. Subagent наследует модель родительской сессии (007).
+
+**Решение:** Установи нужную модель как default в настройках OpenCode.
+
+### Почему DeepSeek для 007 и Operator?
+
+- Дешёвый (бесплатный в OpenCode)
+- Быстрый — разведка и исполнение не требуют глубоких рассуждений
+- 007 только собирает контекст, Operator только применяет TC
+
+### Почему Kimi для 001 и 009?
+
+- Аналитическая модель — лучший выбор для архитектуры
+- Хорошо ловит несостыковки и ошибки
+- 001 принимает решения, 009 проверяет — нужно качество
 
 ---
 
@@ -137,36 +108,28 @@ opencode.json
      ↓
 8. 009 → независимая верификация
      ├── runtime verification
-     ├── DOC-CHECK second pass (cross-audit)
+     ├── DOC-CHECK second pass (перепроверка)
      ├── registry validation
-     └── FULL-BASE drift audit
+     └── VERDICT: ✅ PASS / ❌ FAIL / 🔄 REVISE
      ↓
-9. 009 → VERDICT
-     ├── ✅ PASS → COMPLETE
-     └── ❌ FAIL → return to 007 + Architect
+9. Если ✅ PASS → COMPLETE
 ```
-
-* Architect — on-demand. Для простых TC (naming, contract fix) 007 выдаёт TC напрямую.
 
 ---
 
 ## 3. ПРИНЦИПЫ
 
-| Принцип | Правило |
-|---------|---------|
-| **Изоляция** | 007 и Operator — разные инстансы. Operator слеп. |
-| **Атомарность** | 1 TC = 1 правка = 1 MICRO-PACK |
-| **Single writer** | Только Operator пишет код |
-| **007 не трогает код** | Разведка и упаковка |
-| **Architect не спускается в рутину** | Архитектура + TC |
-| **Frozen не трогать** | Без OVERRIDE от Architect |
-| **Error = Stop** | Не чинить, доложить |
-| **Batch = within-домен** | Только один ownership |
-| **Verify before apply** | Холодная верификация + tsc + тесты |
-| **Doc-Aware** | Каждая задача завершается DOC-CHECK |
-| **DOC-CHECK before COMPLETE** | Задача не COMPLETE без DOC-CHECK |
-| **009 override** | 009 блокирует COMPLETE если DOC-CHECK FAIL |
-| **Independent verification** | 009 верифицирует независимо от 007 |
+1. **Ты диктуешь WHAT & WHEN. Агенты диктуют HOW.**
+2. **007 собирает контекст. АРХИТЕКТОР решает. OPERATOR исполняет. 009 проверяет.**
+3. **Ты не повторяешь контекст. Агент уже прочитал FULL-BASE.**
+4. **Один TC — одно изменение.**
+5. **Оператор без контекста — намеренно.**
+6. **009 блокирует COMPLETE если нашёл проблему.**
+7. **Error = Stop. Не чинить на ходу — сообщить.**
+8. **Frozen zones — только с OVERRIDE.**
+9. **DOC-CHECK после каждого TC.**
+10. **Maintenance Cycle — proof-based, без новых документов.**
+11. **Roles are mandatory. Models are replaceable.**
 
 ---
 
@@ -174,169 +137,145 @@ opencode.json
 
 ### MACRO-PACK (007 → Architect)
 
-```
-Задача → Архитектура → Frozen Guard → Код → Граф зависимостей → git diff → Состояние → Perf
-```
+```markdown
+# 📦 MACRO-PACK: task-xxx
+От: 007
+Для: Архитектор
 
-Полный разведывательный пакет. Содержит:
-- Задачу от PM
-- Архитектурный саммари (выдержки из доков)
-- ❄️ Frozen guard — пересекается ли с frozen зонами?
-- Сжатый код (сигнатуры + релевантные строки)
-- Граф зависимостей (imports, events, selectors)
-- git diff (если уже есть изменения)
-- State snapshot
-- Perf budget (если применимо)
+## 🎯 ЗАДАЧА
+[от тебя]
+
+## 🏗️ АРХИТЕКТУРНЫЙ САММАРИ
+[контекст из доков]
+
+## ❄️ FROZEN GUARD
+🚨 FROZEN INTRUSION / 🚧 PARTIAL / ✅ OK
+
+## 📄 СЖАТЫЙ КОД
+[сигнатуры + релевантные строки]
+
+## 🔗 ГРАФ ЗАВИСИМОСТЕЙ
+[imports, event bus, selectors]
+```
 
 ### MICRO-PACK (007 → Operator)
 
+```markdown
+📦 MICRO-PACK: TC-XXX
+ЦЕЛЬ: [одна фраза]
+ФАЙЛ: path/to/file.ts
+ЗОНА: строки N-M
+ДЕЙСТВИЕ: [точный код]
+КОНТЕКСТ: [3 строки до/после]
+ЗАПРЕЩЕНО: [что не трогать]
+ТЕСТ: tsc --noEmit && vitest --related
 ```
-TC-XXX: ЦЕЛЬ → ФАЙЛ → ЗОНА → ДЕЙСТВИЕ → КОНТЕКСТ → ЗАПРЕЩЕНО → ТЕСТ
-```
-
-Точная инструкция для Operator:
-- **ЦЕЛЬ**: одна фраза
-- **ФАЙЛ**: path/to/file.ts
-- **ЗОНА**: строки N-M
-- **ДЕЙСТВИЕ**: точный код
-- **КОНТЕКСТ**: 3 строки до/после
-- **ЗАПРЕЩЕНО**: что не трогать
-- **ТЕСТ**: tsc --noEmit && test --related
 
 ### VERDICT (009 → PM)
 
-```
-VERDICT: ✅ PASS / ❌ FAIL
-RUNTIME:    ✅ OK / ❌ [детали]
-DOC-CHECK:  ✅ OK / ❌ [детали]
-REGISTRY:   ✅ OK / ❌ [детали]
-FULL-BASE:  ✅ OK / ❌ [детали]
+```markdown
+VERDICT: ✅ PASS / ❌ FAIL / 🔄 REVISE
+RUNTIME:    ✅ OK / ❌ FAIL
+DOC-CHECK:  ✅ OK / ❌ UPDATE / ❌ CREATE
+REGISTRY:   ✅ OK / ❌ STALE
+FULL-BASE:  ✅ OK / ❌ DRIFT
+NOTES: [что нашёл]
 ```
 
 ---
 
 ## 5. ❄️ FROZEN ZONES
 
-Frozen zones — части кода или архитектуры, которые **нельзя менять без решения Architect'а**.
-
 ### Как это работает
 
-1. Каждый проект определяет свой список frozen zones
-2. Frozen zones записываются в charter-007.md
-3. Перед каждой задачей 007 проверяет: задача пересекается с frozen?
-4. Если да — вызывает Architect для OVERRIDE
-5. Без OVERRIDE — задача не выполняется
+Каждый проект определяет свои frozen zones — код, который нельзя менять без Architect.
 
-### Примеры frozen zones
+```
+charter-007.md хранит список frozen зон проекта.
+Изменение frozen зоны требует OVERRIDE от Architect (001).
+```
+
+### Пример
 
 ```yaml
-# Каждый проект определяет свои
-frozen_zones:
-  - "src/core/*"           # Ядро системы
-  - "src/bridges/*"        # Слой интеграций
-  - "database/schema/"     # Схема БД
-  - "api/contracts/"       # API контракты
+# agents/charters/charter-007.md
+❄️ src/core/engine.ts         — транспорт
+❄️ src/bridges/               — слой синхронизации
+❄️ src/legacy/                — legacy boundary shells
 ```
 
 ---
 
 ## 6. 📊 REGISTRY
 
-Registry — YAML-файл, который хранит состояние документации.
-
 ### Формат
 
 ```yaml
-version: 2
-last_updated: 2026-06-15
-
+# docs/sync/MASTER-SYNC-REGISTRY.yaml
 sync_health:
   current:
-    synced: 25
-    needs_update: 3
+    synced: 15
     stale: 1
-    total: 29
-    score: 86
+    total: 16
+    score: 93
 
 documents:
-  - id: auth-system
-    path: docs/auth-system.md
-    domain: auth
+  - id: some-doc
     status: synced
-    drift: none
-    last_audit: 2026-06-10
-
-  - id: api-contracts
-    path: docs/api-contracts.md
-    domain: api
-    status: needs_update
-    drift: minor — endpoint names changed
-    doc_tc:
-      - id: DOC-TC-003
-        status: open
+    last_synced: 2026-06-10
 ```
 
 ### Что даёт registry
 
-- Единая карта документации проекта
-- Health score — насколько docs актуальны
-- История изменений
-- DOC-TC backlog — задачи на обновление документации
+- Прозрачность: какие документы актуальны, какие нет
+- DOC-CHECK привязывается к реальному состоянию
+- Maintenance Cycle находит stale/orphan docs
 
 ---
 
 ## 7. 📝 DOC-AWARE DEVELOPMENT
 
-**Каждая задача завершается проверкой документации.** Это не опционально.
-
 ### DoD (Definition of Done)
 
-Задача COMPLETE только после:
+Задача считается выполненной только после:
 
-```
-✅ [MANDATORY] 1. Реализация Operator'ом завершена
-✅ [MANDATORY] 2. Верификация Scout: git diff + tsc + тесты
-✅ [MANDATORY] 3. DOC-CHECK (007 first pass)
-✅ [MANDATORY] 4. Registry updated
-✅ [MANDATORY] 5. FULL-BASE drift check
-✅ [MANDATORY] 6. 009 independent verification
-✅ [CONDITIONAL] 7. DOC-TC resolved (если был создан)
-```
+1. TC реализован
+2. tsc --noEmit — 0 новых ошибок
+3. tests — проходят
+4. DOC-CHECK — first pass (007)
+5. Registry — обновлён
+6. 009 VERDICT — ✅ PASS
 
 ### DOC-CHECK шаги (007 first pass)
 
 1. Определить затронутые домены
-2. Проверить документацию — существует? Актуальна?
-3. Классифицировать: `DOC_OK` / `DOC_UPDATE_REQUIRED` / `DOC_CREATE_REQUIRED`
-4. Если UPDATE/CREATE — сформировать DOC-TC
-5. Обновить registry
-6. Передать эстафету 009
+2. Проверить документацию
+3. DOC_OK / DOC_UPDATE_REQUIRED / DOC_CREATE_REQUIRED
+4. Сформировать DOC-TC если нужно
+5. Обновить MASTER-SYNC-REGISTRY
 
 ### DOC-CHECK second pass (009)
 
-- Перепроверяет документацию **независимо** от 007
-- Подтверждает DOC_OK / находит пропущенный drift
-- Проверяет registry на корректность статусов
+Независимая перепроверка документации и registry. 009 не читает отчёт 007.
 
 ---
 
 ## 8. 📜 ЧАРТЕРЫ
 
-Чартеры — детальные инструкции для каждого агента.
-
-| Чартер | Для кого | Содержит |
-|--------|----------|---------|
-| `charter-007.md` | Scout (007) | Разведка, MACRO/MICRO форматы, frozen zones, DOC-CHECK протокол |
-| `charter-009.md` | Verifier (009) | Independent verification, VERDICT, random audit, maintenance cycle gatekeeper |
-| `charter-operator.md` | Operator | Blind execution, cold verification, error=stop, MAX 2 files |
-
-Каждый чартер определяет:
-- **КТО** агент
-- **ЧТО ДЕЛАЕТ** и **ЧТО НЕ ДЕЛАЕТ**
-- **ПРОТОКОЛ** — точный формат работы
-- **ПРАВИЛА** — hard rules
-- **ПЕРВЫЙ ШАГ** — что читать при старте
+| Файл | Назначение |
+|------|-----------|
+| `charter-007.md` | Правила разведчика (Scout). MACRO/MICRO, DOC-CHECK, frozen guard |
+| `charter-009.md` | Правила верификатора (Verifier). VERDICT, random audit, gatekeeper |
+| `charter-operator.md` | Правила исполнителя (Operator). Blind execution, error=stop |
 
 ---
 
-*S-VC Core 1.2 — June 2026*
+## 9. 🔄 S-VC MAINTENANCE CYCLE
+
+Регулярный цикл самоочистки системы.
+
+**Триггер:** Пользователь пишет `001, Optimization!`
+
+**Фазы:** A (Detect → 001) → B (Propose → 007) → C (Approve → 009) → D (Execute → Operator) → E (Writeback → 007) → Final Verify (009)
+
+Подробно: `MAINTENANCE-CYCLE.md`
