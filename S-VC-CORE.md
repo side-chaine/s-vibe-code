@@ -64,6 +64,42 @@
 
 ---
 
+## 1.1 🔄 Model Routing — как OpenCode переключает модели
+
+S-VC использует встроенный механизм OpenCode: каждая роль описана в `.opencode/agent/X.md`.
+
+```
+opencode.json
+  └── default_agent: "007"     ← 007 запускается первым (лёгкая модель)
+  
+.opencode/agent/
+  ├── 001.md → model: sonnet    ← Когда 007 вызывает Architect — OpenCode спавнит Sonnet
+  ├── 007.md → без model         ← Использует default (лёгкая)
+  ├── 009.md → без model         ← Использует default (лёгкая)
+  └── operator.md → без model    ← Использует default (лёгкая)
+```
+
+**Как это работает в цикле:**
+
+```
+Задача → 007 (light, $) 
+              ↓ task(subagent_type="001")
+         001 (SONNET, $$$) — решил архитектуру
+              ↓ возвращает TC
+         007 (light, $) — упаковал MICRO-PACK
+              ↓ task(subagent_type="operator")
+         Operator (light, $) — применил код
+              ↓ 
+         007 (light, $) — проверил, запустил DOC-CHECK
+              ↓ task(subagent_type="009")
+         009 (light, $) — VERDICT ✅
+```
+
+Тяжёлая модель (001) вызывается **только когда нужно архитектурное решение**.
+Всю рутину делают лёгкие агенты — это экономит и токены, и деньги.
+
+---
+
 ## 2. ПРОТОКОЛ (3 фазы)
 
 ```
