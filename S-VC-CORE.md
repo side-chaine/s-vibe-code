@@ -9,7 +9,7 @@
 | Роль | Кодовое имя | Инстанс | Рекомендуемая модель | Что делает |
 |------|-------------|---------|---------------------|-----------|
 | **Ты** | Product Manager | — | Человек | Ставишь задачи. WHAT & WHEN |
-| **Architect** | **001** | Сессия (manual) | `opencode-go/kimi-k2.6` | Архитектурные решения, frozen override |
+| **Architect** | **001** | Сессия (manual) | `opencode-go/deepseek-v4-flash` | Внешний оркестратор. Аудит, frozen override |
 | **Scout** | **007** | 1-й | `opencode-go/deepseek-v4-flash` | Разведка, MACRO/MICRO, DOC-CHECK |
 | **Operator** | — | 2-й, изолированный | `opencode-go/deepseek-v4-flash` | Слепое исполнение TC |
 | **Verifier** | **009** | 3-й | `opencode-go/kimi-k2.6` | Независимая верификация, registry |
@@ -19,55 +19,79 @@
 
 ---
 
-## 1.1 🔄 Model Routing — как OpenCode назначает модели
+## 1.1 🔄 Model Routing — как назначены модели
 
-S-VC хранит конфигурацию моделей в `.opencode/agent/X.md`. Каждый файл может содержать `model:` — ID модели из `opencode models`.
+### Стратегия
 
-### Пример рабочей конфигурации
+**Модель НЕ переключается на ходу внутри одной сессии OpenCode.**  
+Если нужно другое поведение — отдельный вызов / отдельная сессия / явный agent config.
 
-```yaml
-# .opencode/agent/001.md
-model: opencode-go/kimi-k2.6
+Поэтому назначение фиксированное:
 
-# .opencode/agent/007.md
-model: opencode-go/deepseek-v4-flash
+| Роль | Модель | Статус |
+|------|--------|--------|
+| **001** (Architect) | `opencode-go/deepseek-v4-flash` | 🪶 Внешний оркестратор |
+| **007** (Scout) | `opencode-go/deepseek-v4-flash` | 🪶 Разведка |
+| **009** (Verifier) | `opencode-go/kimi-k2.6` | 🏋️ Единственная Kimi-роль |
+| **Operator** | `opencode-go/deepseek-v4-flash` | 🪶 Исполнение |
 
-# .opencode/agent/009.md
-model: opencode-go/kimi-k2.6
+### 001 — внешняя роль
 
-# .opencode/agent/operator.md
-model: opencode-go/deepseek-v4-flash
+001 **не является subagent** в runtime. Он:
+- Получает **AUDIT-PACK** (compact pack, а не весь контекст)
+- Анализирует, принимает решение
+- Инициирует следующую фазу
+- Не прыгает между моделями
+
+### 009 — единственный subagent с Kimi
+
+009 получает **VERDICT-PACK**:
+- Краткое описание задачи
+- Diff summary
+- Что проверять
+- Никакого лишнего контекста
+
+### Compact Pack Protocol
+
+**AUDIT-PACK (для 001):**
+```markdown
+Goal:
+Scope:
+Candidates:
+Proof:
+Risks:
+Recommended action:
+Questions for 009:
 ```
 
-### Как это работает
-
-Модель по умолчанию — та, что выбрана в OpenCode.  
-Если в agent-файле указан `model:` — OpenCode пытается использовать её.
-
+**VERDICT-PACK (для 009):**
+```markdown
+Goal:
+Changed files:
+007 findings:
+Diff summary:
+Known risks:
+What to verify:
+Expected verdict:
 ```
-OpenCode default → [модель]
-     ↓
-.opencode/agent/001.md → model: opencode-go/kimi-k2.6    ← попытка переключить
-.opencode/agent/007.md → model: opencode-go/deepseek-v4-flash
-```
 
-### Известное ограничение
+### Известное ограничение OpenCode
 
-При вызове `task(subagent_type="009")` OpenCode **может не переключить** модель на указанную в 009.md. Subagent наследует модель родительской сессии (007).
+При `task(subagent_type="009")` OpenCode **может не переключить** модель на указанную в 009.md. Subagent наследует модель родительской сессии.
 
-**Решение:** Установи нужную модель как default в настройках OpenCode.
+**Решение:** Установи нужную модель как default в настройках OpenCode или проверь UI после запуска.
 
-### Почему DeepSeek для 007 и Operator?
+### Почему DeepSeek для 001, 007, Operator?
 
-- Дешёвый (бесплатный в OpenCode)
-- Быстрый — разведка и исполнение не требуют глубоких рассуждений
-- 007 только собирает контекст, Operator только применяет TC
+- Бесплатный (в OpenCode)
+- Быстрый — не требует глубоких рассуждений для рутины
+- 001 внешний, 007 собирает контекст, Operator применяет TC
 
-### Почему Kimi для 001 и 009?
+### Почему Kimi только для 009?
 
-- Аналитическая модель — лучший выбор для архитектуры
-- Хорошо ловит несостыковки и ошибки
-- 001 принимает решения, 009 проверяет — нужно качество
+- Аналитическая — хорошо ловит несостыковки
+- Единственная роль, где качество важнее скорости
+- 009 проверяет результат всей команды
 
 ---
 

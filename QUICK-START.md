@@ -37,9 +37,9 @@ opencode models
 
 | Агент | Рекомендуемая модель | Зачем |
 |-------|---------------------|-------|
-| **001** (Architect) | `opencode-go/kimi-k2.6` | Архитектурные решения |
+| **001** (Architect) | `opencode-go/deepseek-v4-flash` | Внешний оркестратор |
 | **007** (Scout) | `opencode-go/deepseek-v4-flash` | Разведка, контекст |
-| **009** (Verifier) | `opencode-go/kimi-k2.6` | Верификация |
+| **009** (Verifier) | `opencode-go/kimi-k2.6` | Единственная Kimi-роль |
 | **Operator** | `opencode-go/deepseek-v4-flash` | Исполнение TC |
 
 Скопируй agent-файлы:

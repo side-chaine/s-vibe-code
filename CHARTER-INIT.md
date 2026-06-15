@@ -38,12 +38,11 @@
 Если пользователь не может / не хочет — предложи готовые схемы:
 
 ```
-Популярные модели (проверь opencode models):
-  opencode-go/deepseek-v4-flash   — бесплатно, быстро
-  opencode-go/kimi-k2.6           — аналитика
-  opencode-go/kimi-k2.7-code      — код
-  opencode-go/glm-5.1             — лёгкая
-  openrouter/anthropic/claude-sonnet-4 — топ
+Рекомендуемая схема S-VC:
+  001 → opencode-go/deepseek-v4-flash   — внешний оркестратор
+  007 → opencode-go/deepseek-v4-flash   — разведка (быстро)
+  009 → opencode-go/kimi-k2.6           — верификация (аналитика)
+  Operator → opencode-go/deepseek-v4-flash — исполнение (быстро)
 ```
 
 ### Step 3 — Опросить пользователя
