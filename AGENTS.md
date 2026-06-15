@@ -41,7 +41,7 @@
 ### 🟡 Приоритет 4: Штурм (Storm) — Pattern Hunt
 Если пользователь написал **`Штурм [кластер]`** или **`Storm [cluster]`** — запусти **Pattern Hunt** на указанном кластере.
 
-Кластеры: ZIP Workflow / Billy / Auth / Stem Pipeline / Upload UI / Registry / Audio Engine / Sync
+Примеры кластеров: ZIP Workflow / Billy / Auth / Stem Pipeline / Upload UI / Registry / Audio Engine / Sync (любой смысловой домен проекта)
 
 Flow:
 1. **007** → Cluster Map + Pattern Pack (2-3 варианта решения)

@@ -367,7 +367,8 @@ documents:
 ### Flow
 
 ```
-Никита: "Штурм Billy"
+Никита: "Штурм [кластер]"
+          например "Штурм Billy" / "Storm Auth" / "Штурм ZIP Workflow"
    ↓
 007 → Cluster Map + Pattern Pack (2-3 варианта)
    ↓
