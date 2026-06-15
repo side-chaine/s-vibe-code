@@ -14,6 +14,7 @@
 | **Operator** | — | 2-й, изолированный | `opencode-go/deepseek-v4-flash` | Слепое исполнение TC |
 | **Verifier** | **009** | 3-й | `opencode-go/kimi-k2.6` | Независимая верификация, registry |
 | **Stress-Tester** | **002** | On-demand | `opencode-go/deepseek-v4-flash` | Контрразведка. Атакует предположения |
+| **Vision** | **008** | On-demand | `opencode/mimo-v2.5-free` | Глаза. Смотрит скриншоты, описывает UI |
 
 **Принцип:** Roles are mandatory. Models are replaceable.
 У тебя может быть другой стек моделей — просто замени ID в `.opencode/agent/*.md`.
