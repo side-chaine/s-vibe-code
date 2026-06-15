@@ -346,3 +346,55 @@ documents:
 **Фазы:** A (Detect → 001) → B (Propose → 007) → C (Approve → 009) → D (Execute → Operator) → E (Writeback → 007) → Final Verify (009)
 
 Подробно: `MAINTENANCE-CYCLE.md`
+
+---
+
+## 11. ⚡ ШТУРМ (Storm Protocol) — Pattern Hunt
+
+**Триггер:** Пользователь пишет `Штурм [кластер]` или `Storm [cluster]`
+
+**Цель:** Выбрать лучший паттерн для сложного кластера системы. Не чистка — а поиск решения.
+
+### Когда запускать
+
+| Условие | Пример |
+|---------|--------|
+| Есть сложный кластер с 2-3 конкурирующими паттернами | Billy UX: FSM vs event-driven vs hybrid |
+| Решение влияет на архитектуру | Upload: sync vs async vs progressive |
+| Нужно доказательно выбрать лучший вариант | Auth: OAuth vs API key vs hybrid |
+| Текущий паттерн не масштабируется | Registry: YAML vs DB vs vector |
+
+### Flow
+
+```
+Никита: "Штурм Billy"
+   ↓
+007 → Cluster Map + Pattern Pack (2-3 варианта)
+   ↓
+002 → Attack patterns (слабые места, hidden costs)
+   ↓
+007 → Refine (сжать до 1-2 сильных)
+   ↓
+009 → VERDICT (PASS / BLOCK / MORE PROOF)
+   ↓
+Никита утверждает → Apply / Document / Sync
+```
+
+### Роли
+
+| Фаза | Кто | Что |
+|------|-----|-----|
+| Cluster Map | 007 | Разбить кластер на подзоны, связи, боли |
+| Pattern Pack | 007 | 2-3 варианта, сравнение, proof |
+| Attack | 002 | Атаковать слабые места каждого варианта |
+| Refine | 007 | Сжать до 1-2, объяснить почему |
+| Verdict | 009 | Независимая финальная проверка |
+| Decision | Никита | Утвердить или отправить на доработку |
+
+### Ограничения
+
+- **Один кластер за цикл.** Не "весь проект на атомы".
+- **Не выходить за пределы кластера.** Billy = Billy, не трогаем Audio Engine.
+- **No new registry.** Используем существующий DOC-TC-BACKLOG.
+- **FULL-BASE только если архитектура реально изменилась.**
+- **Exit condition:** выбранный паттерн + доказательства + risk notes + decision summary.
