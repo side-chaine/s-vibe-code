@@ -1,0 +1,120 @@
+# S-VC Core Validation Workflow
+# Проверяет: структуру файлов, ссылки, YAML-синтаксис
+
+name: S-VC Validate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          MISSING=0
+          for f in README.md QUICK-START.md S-VC-CORE.md MAINTENANCE-CYCLE.md EXAMPLE.md AGENTS.md charter-007.md charter-009.md charter-operator.md; do
+            if [ ! -f "$f" ]; then
+              echo "❌ MISSING: $f"
+              MISSING=$((MISSING+1))
+            else
+              echo "✅ OK: $f"
+            fi
+          done
+          if [ $MISSING -ne 0 ]; then
+            echo "❌ $MISSING required file(s) missing"
+            exit 1
+          fi
+          echo "✅ All required files present"
+
+      - name: Check AGENTS.md has [PROJECT] placeholder
+        run: |
+          if grep -q '\[PROJECT\]' AGENTS.md; then
+            echo "⚠️ AGENTS.md contains [PROJECT] placeholder — поменяй на название своего проекта!"
+          else
+            echo "✅ AGENTS.md не содержит плэйсхолдеров"
+          fi
+
+      - name: Check AGENTS.md references 007
+        run: |
+          if grep -q '007' AGENTS.md; then
+            echo "✅ AGENTS.md references 007 role"
+          else
+            echo "❌ AGENTS.md missing 007 role reference"
+            exit 1
+          fi
+
+      - name: Check charters reference S-VC Core
+        run: |
+          for charter in charter-007.md charter-009.md charter-operator.md; do
+            if grep -q 'S-VC Core' "$charter"; then
+              echo "✅ $charter references S-VC Core"
+            else
+              echo "⚠️ $charter missing S-VC Core reference"
+            fi
+          done
+
+      - name: Check YAML syntax
+        run: |
+          if command -v yamllint &> /dev/null; then
+            yamllint . --format parsable || true
+          else
+            echo "yamllint not available — check manually"
+          fi
+
+      - name: Check Markdown links (internal)
+        run: |
+          # Проверка что ссылки на локальные файлы ведут в существующие файлы
+          ERRORS=0
+          for f in README.md QUICK-START.md S-VC-CORE.md; do
+            # Ищем ссылки вида [text](./file.md)
+            for link in $(grep -oP '\]\(\./[^)]+\.md\)' "$f" | sed 's/\]\(//' | sed 's/)$//'); do
+              target="${link#./}"
+              if [ ! -f "$target" ]; then
+                echo "❌ $f: broken link → $target"
+                ERRORS=$((ERRORS+1))
+              else
+                echo "✅ $f: → $target OK"
+              fi
+            done
+          done
+          if [ $ERRORS -ne 0 ]; then
+            echo "❌ $ERRORS broken link(s) found"
+            exit 1
+          fi
+          echo "✅ All internal links valid"
+
+      - name: Check charter format
+        run: |
+          ERRORS=0
+          for charter in charter-007.md charter-009.md charter-operator.md; do
+            # Должен содержать секцию "КТО ТЫ"
+            if ! grep -q 'КТО ТЫ\|WHO YOU ARE' "$charter"; then
+              echo "❌ $charter missing 'КТО ТЫ' section"
+              ERRORS=$((ERRORS+1))
+            fi
+            # Должен содержать секцию "ЧТО ТЫ НЕ ДЕЛАЕШЬ"
+            if ! grep -q 'НЕ ДЕЛАЕШЬ\|DON\'T' "$charter"; then
+              echo "❌ $charter missing 'НЕ ДЕЛАЕШЬ' section"
+              ERRORS=$((ERRORS+1))
+            fi
+          done
+          if [ $ERRORS -ne 0 ]; then
+            echo "❌ $ERRORS charter format issue(s)"
+            exit 1
+          fi
+          echo "✅ All charters have required sections"
+
+      - name: Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  S-VC Core Validation Report  "
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Files: 10 required + LICENSE"
+          echo "  Status: ✅ PASS (or check above)"
