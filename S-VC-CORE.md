@@ -13,9 +13,24 @@
 | **Scout** | **007** | 1-й | `opencode-go/deepseek-v4-flash` | Разведка, MACRO/MICRO, DOC-CHECK |
 | **Operator** | — | 2-й, изолированный | `opencode-go/deepseek-v4-flash` | Слепое исполнение TC |
 | **Verifier** | **009** | 3-й | `opencode-go/kimi-k2.6` | Независимая верификация, registry |
+| **Stress-Tester** | **002** | On-demand | `opencode-go/deepseek-v4-flash` | Контрразведка. Атакует предположения |
 
 **Принцип:** Roles are mandatory. Models are replaceable.
 У тебя может быть другой стек моделей — просто замени ID в `.opencode/agent/*.md`.
+
+### Вызов 002
+
+```
+Ты: "002/"
+
+  002 запускает стресс-тест:
+  - Атакует 5 векторов (Epistemic Collapse, Independence Theater,
+    Frozen Deadlock, Context Amnesia, Process Overhead)
+  - Выдаёт STRESS-TEST REPORT
+  - Минимум 3 attack vectors с Severity 🔴
+
+Подробнее: charter-002.md, VALIDATION-SUITE.md
+```
 
 ---
 
@@ -293,10 +308,27 @@ documents:
 | `charter-007.md` | Правила разведчика (Scout). MACRO/MICRO, DOC-CHECK, frozen guard |
 | `charter-009.md` | Правила верификатора (Verifier). VERDICT, random audit, gatekeeper |
 | `charter-operator.md` | Правила исполнителя (Operator). Blind execution, error=stop |
+| `charter-002.md` | Правила стресс-тестера (002). Атака предположений |
 
 ---
 
-## 9. 🔄 S-VC MAINTENANCE CYCLE
+## 9. ⚠️ KNOWN RISKS (Found by 002)
+
+Следующие риски были найдены 002 (Stress-Test Specialist) в 2026-06-15 и признаны архитектурными ограничениями системы:
+
+| # | Риск | Severity | Mitigation |
+|---|------|----------|-----------|
+| 1 | **Single Model Epistemic Collapse** — все роли на одной LLM имеют одно слепое пятно | 🔴 HIGH | Центр (001) должен использовать другую модель. Вызывать для критических решений |
+| 2 | **009 Independence Theater** — 009 читает те же файлы, что и 007 | 🔴 HIGH | 009 должен иметь другой источник данных: логи, скриншоты, runtime-тесты |
+| 3 | **Frozen Zone Deadlock** — слишком широкие frozen зоны могут стопорить hotfix | 🔴 HIGH | Frozen должен быть узким (только архитектурные инварианты). Hotfix protocol для P0 |
+| 4 | **Context Window Amnesia** — FULL-BASE 4000+ строк не читается целиком | 🟡 MED | Векторная память (RAG) или автоматический diff-детектор дрифта |
+| 5 | **Process Death by DOC-CHECK Overhead** — процесс тяжелее задачи | 🟡 MED | Разделить TC на классы: P0 полный цикл, P1/P2 облегчённый |
+
+**Принцип:** Эти риски не заблокированы. Они документированы. Если они станут реальной болью — система их исправит.
+
+---
+
+## 10. 🔄 S-VC MAINTENANCE CYCLE
 
 Регулярный цикл самоочистки системы.
 
