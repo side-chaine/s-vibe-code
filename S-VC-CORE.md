@@ -1,6 +1,6 @@
-# 🏛️ S-VC Core v1.2 — Ядро системы
+# 🏛️ S-VC Core 1.3 — Ядро системы
 
-**Side_chaine_Vibe_Code** — протокол агентского governance для vibe-coding проектов.
+**Agent007 System** — открытая система управления AI-агентами для vibe-coded проектов.
 
 ---
 
@@ -413,3 +413,16 @@ documents:
 - **No new registry.** Используем существующий DOC-TC-BACKLOG.
 - **FULL-BASE только если архитектура реально изменилась.**
 - **Exit condition:** выбранный паттерн + доказательства + risk notes + decision summary.
+
+---
+
+## 12. 📋 CHANGELOG
+
+### v1.3 — June 2026
+- AGENTS.md v2.2: 10 триггеров + SMALL маршрут
+- Context Engineering Protocol (4-tuple)
+- Phase C → 009 canonical
+- SELF-VERIFY / FULL VERIFY критерии
+- 008/ и 000/ встроены в цепочки
+- Frozen абсолютное исключение в SMALL
+- 009 шаблон вывода
