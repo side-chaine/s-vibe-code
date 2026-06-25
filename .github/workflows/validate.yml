@@ -100,7 +100,7 @@ jobs:
               ERRORS=$((ERRORS+1))
             fi
             # Должен содержать секцию "ЧТО ТЫ НЕ ДЕЛАЕШЬ"
-            if ! grep -q 'НЕ ДЕЛАЕШЬ\|DON\'T' "$charter"; then
+            if ! grep -q 'НЕ ДЕЛАЕШЬ' "$charter"; then
               echo "❌ $charter missing 'НЕ ДЕЛАЕШЬ' section"
               ERRORS=$((ERRORS+1))
             fi
